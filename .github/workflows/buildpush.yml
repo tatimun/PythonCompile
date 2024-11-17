@@ -3,7 +3,9 @@ name: Build and Push Docker Image to ECR
 on:
   push:
     branches:
-      - main  # Puedes cambiar esto a la rama que prefieras
+      - main  
+    tags:
+      - 'v*.*.*'  # Disparar el flujo de trabajo en etiquetas que siguen el patrón vX.X.X
 
 jobs:
   build-and-push:
@@ -13,6 +15,8 @@ jobs:
       # 1. Checkout del código
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Necesario para obtener información de las etiquetas
 
       # 2. Configurar las credenciales de AWS
       - name: Configure AWS credentials
@@ -33,23 +37,52 @@ jobs:
 
       # 5. Definir variables
       - name: Set variables
+        id: vars
         run: |
           echo "ECR_REGISTRY=${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" >> $GITHUB_ENV
           echo "IMAGE_NAME=${{ secrets.ECR_REPOSITORY }}" >> $GITHUB_ENV
-          echo "IMAGE_TAG=latest" >> $GITHUB_ENV  # Puedes cambiar esto según tu estrategia de versionado
+          # Determinar el tag de la imagen
+          if [ -n "${GITHUB_REF}" ] && [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            # Extraer la versión de la etiqueta Git
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "IMAGE_TAG=${VERSION}" >> $GITHUB_ENV
+            # Opcional: también puedes incluir el SHA del commit
+            COMMIT_SHA=${GITHUB_SHA::7}
+            echo "IMAGE_TAG_SHA=${VERSION}-${COMMIT_SHA}" >> $GITHUB_ENV
+          else
+            # Para pushes a ramas sin etiqueta, usar 'latest' y el SHA
+            COMMIT_SHA=${GITHUB_SHA::7}
+            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+            echo "IMAGE_TAG_SHA=latest-${COMMIT_SHA}" >> $GITHUB_ENV
+          fi
 
       # 6. Crear el repositorio en ECR si no existe (opcional)
       - name: Create ECR Repository if not exists
         run: |
+          if [ -z "$IMAGE_NAME" ]; then
+            echo "ERROR: IMAGE_NAME está vacío. Asegúrate de que el secreto ECR_REPOSITORY esté configurado."
+            exit 1
+          fi
           aws ecr describe-repositories --repository-names $IMAGE_NAME || \
           aws ecr create-repository --repository-name $IMAGE_NAME --region ${{ secrets.AWS_REGION }}
 
-      # 7. Construir la imagen Docker
+      # 7. Construir la imagen Docker con múltiples etiquetas
       - name: Build Docker image
         run: |
-          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          if [ -z "$IMAGE_NAME" ]; then
+            echo "ERROR: IMAGE_NAME está vacío. Asegúrate de que el secreto ECR_REPOSITORY esté configurado."
+            exit 1
+          fi
+          # Construir la imagen con dos etiquetas: versión y SHA
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG_SHA .
 
-      # 8. Push de la imagen a ECR
-      - name: Push Docker image to ECR
+      # 8. Push de las imágenes a ECR
+      - name: Push Docker images to ECR
         run: |
+          if [ -z "$IMAGE_NAME" ]; then
+            echo "ERROR: IMAGE_NAME está vacío. Asegúrate de que el secreto ECR_REPOSITORY esté configurado."
+            exit 1
+          fi
+          # Push de ambas etiquetas
           docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG_SHA
