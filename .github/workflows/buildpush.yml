@@ -85,4 +85,3 @@ jobs:
           fi
           # Push de ambas etiquetas
           docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG_SHA
