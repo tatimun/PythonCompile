@@ -38,12 +38,18 @@ jobs:
           echo "IMAGE_NAME=${{ secrets.ECR_REPOSITORY }}" >> $GITHUB_ENV
           echo "IMAGE_TAG=latest" >> $GITHUB_ENV  # Puedes cambiar esto según tu estrategia de versionado
 
-      # 6. Construir la imagen Docker
+      # 6. Crear el repositorio en ECR si no existe (opcional)
+      - name: Create ECR Repository if not exists
+        run: |
+          aws ecr describe-repositories --repository-names $IMAGE_NAME || \
+          aws ecr create-repository --repository-name $IMAGE_NAME --region ${{ secrets.AWS_REGION }}
+
+      # 7. Construir la imagen Docker
       - name: Build Docker image
         run: |
           docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
 
-      # 7. Push de la imagen a ECR
+      # 8. Push de la imagen a ECR
       - name: Push Docker image to ECR
         run: |
           docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
