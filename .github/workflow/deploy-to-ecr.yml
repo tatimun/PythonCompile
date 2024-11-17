@@ -3,24 +3,26 @@ name: Build and Push Docker Image to ECR
 on:
   push:
     branches:
-      - main 
+      - main  # Puedes cambiar esto a la rama que prefieras
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout del código
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2. Configurar las credenciales de AWS
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-
+      # 3. Loguearse en Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -28,14 +30,15 @@ jobs:
       # 4. Obtener el ID de la cuenta de AWS
       - name: Get AWS Account ID
         id: account-id
-        run: echo "::set-output name=id::$(aws sts get-caller-identity --query Account --output text)"
+        run: echo "ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_ENV
 
       # 5. Definir variables
       - name: Set variables
         id: vars
         run: |
-          echo "ECR_REGISTRY=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" >> $GITHUB_ENV
-          echo "IMAGE_NAME=mi-repositorio" >> $GITHUB_ENV  # Reemplaza con el nombre de tu repositorio ECR
+          echo "ECR_REGISTRY=${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ secrets.ECR_REPOSITORY }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=latest" >> $GITHUB_ENV  # Puedes cambiar esto según tu estrategia de versionado
 
       # 6. Construir la imagen Docker
       - name: Build Docker image
