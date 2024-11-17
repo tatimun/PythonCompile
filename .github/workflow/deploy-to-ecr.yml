@@ -24,7 +24,6 @@ jobs:
 
       # 3. Loguearse en Amazon ECR
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       # 4. Obtener el ID de la cuenta de AWS
@@ -34,7 +33,6 @@ jobs:
 
       # 5. Definir variables
       - name: Set variables
-        id: vars
         run: |
           echo "ECR_REGISTRY=${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" >> $GITHUB_ENV
           echo "IMAGE_NAME=${{ secrets.ECR_REPOSITORY }}" >> $GITHUB_ENV
@@ -43,14 +41,9 @@ jobs:
       # 6. Construir la imagen Docker
       - name: Build Docker image
         run: |
-          docker build -t $IMAGE_NAME .
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
 
-      # 7. Etiquetar la imagen Docker
-      - name: Tag Docker image
-        run: |
-          docker tag $IMAGE_NAME:latest $ECR_REGISTRY/$IMAGE_NAME:latest
-
-      # 8. Push de la imagen a ECR
+      # 7. Push de la imagen a ECR
       - name: Push Docker image to ECR
         run: |
-          docker push $ECR_REGISTRY/$IMAGE_NAME:latest
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
