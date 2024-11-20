@@ -36,7 +36,7 @@ EOF
           fi
           
           # 3.2 Iniciar sesión en Amazon ECR
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com/fastapi-app
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com/test
           
           # 3.3 Ejecutar Docker Compose
           docker-compose pull
