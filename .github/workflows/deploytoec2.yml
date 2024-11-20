@@ -23,8 +23,18 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Deploying application using Docker Compose" \
             --parameters '{"commands":[
-              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin 216989140286.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com",
-              "echo \'version: \"3.8\"\\nservices:\\n  pythoncompile:\\n    image: 216989140286.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/test:latest\\n    container_name: pythoncompile-app\\n    ports:\\n      - \\\"8000:8000\\\"\\n    environment:\\n      - OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}\' > docker-compose.yml",
+              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com",
+              "cat <<EOF > docker-compose.yml",
+              "version: \\\"3.8\\\"",
+              "services:",
+              "  pythoncompile:",
+              "    image: ${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest",
+              "    container_name: pythoncompile-app",
+              "    ports:",
+              "      - \\\"8000:8000\\\"",
+              "    environment:",
+              "      - OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}",
+              "EOF",
               "docker-compose pull",
               "docker-compose up -d"
             ]}' \
