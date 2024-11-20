@@ -28,16 +28,23 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      # 4. Sincronizar archivos con rsync
-      - name: Deploy with rsync
-        run: |
-            rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" ./dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/my-app/
 
       - name: Debugging Secrets
         run: |
             echo "SSH_PORT: ${{ secrets.SSH_PORT }}"
             echo "SSH_USER: ${{ secrets.SSH_USER }}"
             echo "SSH_HOST: ${{ secrets.SSH_HOST }}"
+
+      - name: Debug Workspace
+        run: |
+           echo "Checking workspace..."
+           ls -l
+           ls -l ./dist
+
+      # 4. Sincronizar archivos con rsync
+      - name: Deploy with rsync
+        run: |
+            rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" /home/runner/work/PythonCompile/dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/my-app/
             
       # 5. Reiniciar el servidor
       - name: Restart Server and Deploy Code
