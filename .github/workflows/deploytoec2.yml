@@ -8,36 +8,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test Connection
-        run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUBLIC_IP }} "echo Connection successful"
-
       # 1. Configurar la clave SSH
       - name: Configure SSH Key
         run: |
           mkdir -p ~/.ssh
           cat <<EOF > ~/.ssh/id_rsa
-          ${{ secrets.EC2_SSH_KEY }}
-          EOF
+${{ secrets.EC2_SSH_KEY }}
+EOF
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H 3.238.70.151 >> ~/.ssh/known_hosts
 
-      # 2. Conectarse y ejecutar comandos en la EC2
+      # 2. Probar la conexión SSH
+      - name: Test SSH Connection
+        run: |
+          ssh -v -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@3.238.70.151 "echo Connection successful"
+
+      # 3. Conectarse y ejecutar comandos en la EC2
       - name: Deploy Docker Compose
         run: |
-          ssh -i ~/.ssh/id_rsa ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-          # 2.1 Navegar al directorio del proyecto o clonar el repositorio si no existe
+          ssh -i ~/.ssh/id_rsa ec2-user@3.238.70.151 << 'EOF'
+          # 3.1 Navegar al directorio del proyecto o clonar el repositorio si no existe
           if [ ! -d "/path/to/your/project" ]; then
-            git clone https://github.com/tatimun/PythonCompile.git PythonCompile
+            git clone https://github.com/tatimun/PythonCompile.git pythoncompile
           else
-            cd PythonCompile
+            cd pythoncompile/
             git pull origin main
           fi
           
-          # 2.2 Iniciar sesión en Amazon ECR
+          # 3.2 Iniciar sesión en Amazon ECR
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com/fastapi-app
           
-          # 2.3 Ejecutar Docker Compose
+          # 3.3 Ejecutar Docker Compose
           docker-compose pull
           docker-compose up -d
           EOF
