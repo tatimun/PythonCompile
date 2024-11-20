@@ -1,4 +1,4 @@
-name: Deploy FastAPI via SSH
+name: Deploy FastAPI via AWS SSM
 
 on:
   workflow_dispatch: # Permite ejecutar manualmente el pipeline
@@ -8,37 +8,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Configurar la clave SSH
-      - name: Configure SSH Key
-        run: |
-          mkdir -p ~/.ssh
-          cat <<EOF > ~/.ssh/id_rsa
-          ${{ secrets.EC2_SSH_KEY }}
-          EOF
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 3.238.70.151 >> ~/.ssh/known_hosts
+      # 1. Configurar credenciales de AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      # 2. Probar la conexión SSH
-      - name: Test SSH Connection
+      # 2. Ejecutar comandos en la instancia EC2 con SSM
+      - name: Deploy Docker Compose via SSM
         run: |
-          ssh -v -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@3.238.70.151 "echo Connection successful"
-
-      # 3. Conectarse y ejecutar comandos en la EC2
-      - name: Deploy Docker Compose
-        run: |
-          ssh -i ~/.ssh/id_rsa ec2-user@3.238.70.151 << 'EOF'
-          # 3.1 Navegar al directorio del proyecto o clonar el repositorio si no existe
-          if [ ! -d "/path/to/your/project" ]; then
-            git clone https://github.com/tatimun/PythonCompile.git pythoncompile
-          else
-            cd pythoncompile/
-            git pull origin main
-          fi
-          
-          # 3.2 Iniciar sesión en Amazon ECR
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com/test
-          
-          # 3.3 Ejecutar Docker Compose
-          docker-compose pull
-          docker-compose up -d
-          EOF
+          aws ssm send-command \
+            --targets "Key=tag:Name,Values=FastAPIStack" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploying application via Docker Compose" \
+            --parameters '{"commands":[
+              "cd /home/ec2-user",
+              "rm -f docker-compose.yml",
+              "cat <<EOF > docker-compose.yml",
+              "version: \\\"3.8\\\"",
+              "services:",
+              "  pythoncompile:",
+              "    image: 140023394742.dkr.ecr.us-east-1.amazonaws.com/fastapi-app:latest",
+              "    container_name: pythoncompile-app",
+              "    ports:",
+              "      - \\\"8000:8000\\\"",
+              "    environment:",
+              "      - OPENAI_API_KEY=${OPENAI_API_KEY}",
+              "EOF",
+              "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com",
+              "docker-compose pull",
+              "docker-compose up -d"
+            ]}' \
+            --region us-east-1
