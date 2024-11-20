@@ -26,7 +26,7 @@ jobs:
             --parameters '{"commands":[
               "cd /home/ec2-user",
               "rm -rf fastapi-repo",
-              "git clone https://github.com/<usuario>/<repositorio>.git fastapi-repo",
+              "git clone https://github.com/tatimun/PythonCompile.git fastapi-repo",
               "cd fastapi-repo",
               "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com",
               "docker-compose pull",
