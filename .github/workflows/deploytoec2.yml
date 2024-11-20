@@ -31,8 +31,14 @@ jobs:
       # 4. Sincronizar archivos con rsync
       - name: Deploy with rsync
         run: |
-            rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" ./dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ssm-user/my-app/
+            rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" ./dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/my-app/
 
+      - name: Debugging Secrets
+        run: |
+            echo "SSH_PORT: ${{ secrets.SSH_PORT }}"
+            echo "SSH_USER: ${{ secrets.SSH_USER }}"
+            echo "SSH_HOST: ${{ secrets.SSH_HOST }}"
+            
       # 5. Reiniciar el servidor
       - name: Restart Server and Deploy Code
         uses: appleboy/ssh-action@master
