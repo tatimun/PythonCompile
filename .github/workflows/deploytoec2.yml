@@ -16,21 +16,25 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # 2. Ejecutar comandos en la instancia EC2 con SSM
+      # 2. Instalar clave SSH
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: unnecessary
 
+      # 3. Agregar el host a known_hosts
       - name: Adding Known Hosts
-        run: ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+        run: |
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-        
+      # 4. Sincronizar archivos con rsync
       - name: Deploy with rsync
-        run: rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" ./dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/students.asyncjs.today/dist/
+        run: |
+          rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" ./dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/students.asyncjs.today/dist/
 
-      - name: Restart Server
+      # 5. Reiniciar el servidor
+      - name: Restart Server and Deploy Code
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -38,4 +42,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            git clone https://github.com/tatimun/PythonCompile.git
+            # Clonar el repositorio (si es necesario)
+            if [ ! -d "/var/www/PythonCompile" ]; then
+              git clone https://github.com/tatimun/PythonCompile.git /var/www/PythonCompile
+            else
+              cd /var/www/PythonCompile && git pull
+            fi
+
+            # Reiniciar el servicio (ajustar según tu aplicación)
+            sudo systemctl restart fastapi
