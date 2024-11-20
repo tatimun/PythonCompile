@@ -17,17 +17,17 @@ jobs:
           aws-region: us-east-1
 
       # 2. Ejecutar comandos en la instancia EC2 con SSM
-      - name: Deploy Docker Compose via SSM
+      - name: Deploy Docker Compose on EC2
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          USER: ssm-user
+          HOST: 3.238.70.151
         run: |
-          aws ssm send-command \
-            --targets "Key=tag:Name,Values=FastAPIStack" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Deploying application via Docker Compose" \
-            --parameters '{"commands":[
-              "cd /home/ec2-user",
-              "if [ ! -d \\\"fastapi-app\\\" ]; then git clone https://github.com/tatimun/PythonCompile.git fastapi-app; else cd fastapi-app && git pull; fi",
-              "cd fastapi-app",
-              "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com",
-              "docker-compose up -d"
-            ]}' \
-            --region us-east-1
+          echo "$SSH_PRIVATE_KEY" > key.pem
+          chmod 600 key.pem
+          ssh -o StrictHostKeyChecking=no -i key.pem $USER@$HOST << 'EOF'
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com
+            cd pythoncompile/
+            docker-compose pull
+            docker-compose up -d
+          EOF
