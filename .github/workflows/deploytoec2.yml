@@ -1,0 +1,31 @@
+name: Deploy to EC2 with Docker Compose
+
+on:
+  workflow_dispatch: # Ejecutar manualmente desde la interfaz de GitHub Actions
+
+jobs:
+  deploy-to-ec2:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Configurar las credenciales de AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 2. Ejecutar docker-compose en EC2 usando SSM
+      - name: Run docker-compose on EC2 via SSM
+        run: |
+          aws ssm send-command \
+            --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploying application using Docker Compose" \
+            --parameters commands="
+              aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY;
+              echo '${{ secrets.DOCKER_COMPOSE_CONTENT }}' > docker-compose.yml;
+              docker-compose pull;
+              docker-compose up -d;
+            " \
+            --region ${{ secrets.AWS_REGION }}
