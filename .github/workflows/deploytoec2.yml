@@ -13,8 +13,8 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           cat <<EOF > ~/.ssh/id_rsa
-${{ secrets.EC2_SSH_KEY }}
-EOF
+          ${{ secrets.EC2_SSH_KEY }}
+          EOF
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 3.238.70.151 >> ~/.ssh/known_hosts
 
