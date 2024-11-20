@@ -25,20 +25,9 @@ jobs:
             --comment "Deploying application via Docker Compose" \
             --parameters '{"commands":[
               "cd /home/ec2-user",
-              "rm -f docker-compose.yml",
-              "cat <<EOF > docker-compose.yml",
-              "version: \\\"3.8\\\"",
-              "services:",
-              "  pythoncompile:",
-              "    image: 140023394742.dkr.ecr.us-east-1.amazonaws.com/fastapi-app:latest",
-              "    container_name: pythoncompile-app",
-              "    ports:",
-              "      - \\\"8000:8000\\\"",
-              "    environment:",
-              "      - OPENAI_API_KEY=${OPENAI_API_KEY}",
-              "EOF",
+              "if [ ! -d \\\"fastapi-app\\\" ]; then git clone https://github.com/tatimun/PythonCompile.git fastapi-app; else cd fastapi-app && git pull; fi",
+              "cd fastapi-app",
               "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com",
-              "docker-compose pull",
               "docker-compose up -d"
             ]}' \
             --region us-east-1
