@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   pythoncompile:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: 216989140286.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
     container_name: pythoncompile-app
     ports:
       - "8000:8000"
