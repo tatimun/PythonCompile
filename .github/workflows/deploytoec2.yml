@@ -21,13 +21,27 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           USER: ssm-user
-          HOST: 3.238.70.151
+          HOST: 98.82.165.50
         run: |
           echo "$SSH_PRIVATE_KEY" > key.pem
           chmod 600 key.pem
           ssh -o StrictHostKeyChecking=no -i key.pem $USER@$HOST << 'EOF'
-            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 140023394742.dkr.ecr.us-east-1.amazonaws.com
+            # Instalar Git si no está instalado
+            if ! command -v git &> /dev/null; then
+              sudo yum install -y git || sudo apt-get install -y git
+            fi
+
+            # Clonar el repositorio en la instancia EC2
+            if [ ! -d "pythoncompile" ]; then
+              git clone https://github.com/tatimun/PythonCompile.git pythoncompile
+            else
+              cd pythoncompile && git pull
+            fi
+
+            # Autenticarse con ECR
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 438465160540.dkr.ecr.us-east-1.amazonaws.com/fastapi-app
+
+            # Cambiar al directorio y desplegar con Docker Compose
             cd pythoncompile/
-            docker-compose pull
             docker-compose up -d
           EOF
