@@ -39,7 +39,7 @@ jobs:
         run: |
            echo "Checking workspace..."
            ls -l
-           ls -l ./dist
+           
 
       # 4. Sincronizar archivos con rsync
       - name: Deploy with rsync
