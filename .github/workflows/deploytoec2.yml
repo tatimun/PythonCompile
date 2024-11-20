@@ -28,8 +28,7 @@ jobs:
               "rm -rf fastapi-repo",
               "git clone https://github.com/tatimun/PythonCompile.git fastapi-repo",
               "cd fastapi-repo",
-              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com",
-              "docker-compose pull",
-              "docker-compose up -d"
+              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin 140023394742.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com",
+              "ls"
             ]}' \
             --region ${{ secrets.AWS_REGION }}
