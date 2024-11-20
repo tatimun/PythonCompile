@@ -15,11 +15,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 2. Ejecutar docker-compose en EC2 usando SSM
+      # 2. Ejecutar docker-compose en EC2 usando SSM con etiquetas
       - name: Run docker-compose on EC2 via SSM
         run: |
           aws ssm send-command \
-            --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
+            --targets "Key=tag:Name,Values=FastAPIStack" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploying application using Docker Compose" \
             --parameters '{"commands":[
