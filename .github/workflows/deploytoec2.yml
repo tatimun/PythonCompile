@@ -17,27 +17,25 @@ jobs:
           aws-region: us-east-1
 
       # 2. Ejecutar comandos en la instancia EC2 con SSM
-      - name: Deploy Docker Compose on EC2
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          USER: ssm-user
-          HOST: 98.82.165.50
-        run: |
-          echo "$SSH_PRIVATE_KEY" > key.pem
-          chmod 600 key.pem
-          ssh -o StrictHostKeyChecking=no -i key.pem $USER@$HOST << 'EOF'
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: unnecessary
 
-            # Clonar el repositorio en la instancia EC2
-            if [ ! -d "pythoncompile" ]; then
-              git clone https://github.com/tatimun/PythonCompile.git pythoncompile
-            else
-              cd pythoncompile && git pull
-            fi
+      - name: Adding Known Hosts
+        run: ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-            # Autenticarse con ECR
-            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 438465160540.dkr.ecr.us-east-1.amazonaws.com/fastapi-app
+        
+      - name: Deploy with rsync
+        run: rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" ./dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/students.asyncjs.today/dist/
 
-            # Cambiar al directorio y desplegar con Docker Compose
-            cd pythoncompile/
-            docker-compose up -d
-          EOF
+      - name: Restart Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            git clone https://github.com/tatimun/PythonCompile.git
