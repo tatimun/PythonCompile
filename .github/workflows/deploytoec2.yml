@@ -56,12 +56,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            # Clonar el repositorio (si es necesario)
-            if [ ! -d "/var/www/PythonCompile" ]; then
               git clone https://github.com/tatimun/PythonCompile.git /var/www/PythonCompile
-            else
-              cd /var/www/PythonCompile && git pull
-            fi
-
-            # Reiniciar el servicio (ajustar según tu aplicación)
-            sudo systemctl restart fastapi
+              cd PythonCompile/ && git pull
