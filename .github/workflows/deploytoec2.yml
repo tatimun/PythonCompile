@@ -28,6 +28,10 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Authenticate Docker with ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 216989140286.dkr.ecr.us-east-1.amazonaws.com
+
       - name: Debugging Secrets
         run: |
             echo "SSH_PORT: ${{ secrets.SSH_PORT }}"
@@ -62,5 +66,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
+              export ECR_IMAGE="216989140286.dkr.ecr.us-east-1.amazonaws.com/fastapi-app"
+              export OPENAI_API_KEY="test"
+              aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 216989140286.dkr.ecr.us-east-1.amazonaws.com
               git clone https://github.com/tatimun/PythonCompile.git PythonCompile/
               cd PythonCompile/ && git pull
+              docker-compose up -d
