@@ -46,7 +46,13 @@ jobs:
       - name: Deploy with rsync
         run: |
             rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" . ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/my-app/
-            
+
+      - name: Debug Workspace
+        run: |
+           echo "Checking workspace..."
+           ls
+           pwd
+
       # 5. Reiniciar el servidor
       - name: Restart Server and Deploy Code
         uses: appleboy/ssh-action@master
@@ -56,5 +62,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-              git clone https://github.com/tatimun/PythonCompile.git /var/www/PythonCompile
+              git clone https://github.com/tatimun/PythonCompile.git PythonCompile/
               cd PythonCompile/ && git pull
