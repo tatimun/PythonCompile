@@ -69,6 +69,14 @@ jobs:
               export ECR_IMAGE="216989140286.dkr.ecr.us-east-1.amazonaws.com/fastapi-app"
               export OPENAI_API_KEY="test"
               aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 216989140286.dkr.ecr.us-east-1.amazonaws.com
-              git clone https://github.com/tatimun/PythonCompile.git PythonCompile/
-              cd PythonCompile/ && git pull
+              # Clonar o actualizar el repositorio
+              if [ ! -d "PythonCompile" ]; then
+                git clone https://github.com/tatimun/PythonCompile.git
+              else
+              cd PythonCompile && git pull && cd ..
+              fi
+
+              # Ejecutar docker-compose
+              cd PythonCompile
+
               docker-compose up -d
