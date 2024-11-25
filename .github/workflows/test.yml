@@ -1,0 +1,108 @@
+name: Deploy-ec2-pharma-dev
+
+on:
+  workflow_dispatch: 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Install jq 
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: unnecessary
+
+      - name: Get VPC IP
+        id: vpc-ip
+        uses: haythem/public-ip@v1.2
+
+      - name: Add IP to AWS Security group
+        id: get-sg-rule-id
+        run: |
+          id=$(aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.SECURITY_GROUP_ID }} \
+            --ip-permissions IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges="[{CidrIp=${IP},Description=${DESC}}]" \
+            | jq --raw-output '.SecurityGroupRules | map(.SecurityGroupRuleId) | join("")')
+          echo "::set-output name=rule_id::$id"
+        env:
+          IP: ${{ steps.vpc-ip.outputs.ipv4 }}/32
+          DESC: 'GitHub Workflow'
+
+
+      - name: Adding Known Hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Adding Known Hosts
+        run: |
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+      - name: Authenticate Docker with ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+      
+      - name: Deploy with rsync
+        run: |
+            rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" . ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/
+
+
+
+      - name: Deploy Code
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+              export ECR_IMAGE="${{ secrets.ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}"
+              export GIT_TOKEN=${{ secrets.GIT_TOKEN }}
+              df -h
+              echo "Before Clone"
+              if [ -d "/home/${{ secrets.SSH_USER }}/Pharmacovigilance" ]; then
+                   echo "Doing pull"
+                   cd /home/${{ secrets.SSH_USER }}/Pharmacovigilance
+                   git pull
+              else
+                   echo "Cloning Repo"
+                   git clone https://$GIT_TOKEN@github.com/scaleiQModules/pharmacovigilance-platform.git /home/${{ secrets.SSH_USER }}/Pharmacovigilance
+              fi
+              cd /home/${{ secrets.SSH_USER }}/Pharmacovigilance
+              echo "Logging into ECR..."
+              aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+              echo "Pulling latest Docker images..."
+              docker-compose pull
+              echo "Starting application in background..."
+              nohup docker-compose up -d > docker-compose.log 2>&1 &
+              echo "Application started."
+
+      - name: Remove IP from AWS Security group
+        if: always() 
+        run: |
+          aws ec2 revoke-security-group-ingress \
+          --group-id ${{ secrets.SECURITY_GROUP_ID }} \
+          --security-group-rule-ids ${{ steps.get-sg-rule-id.outputs.rule_id }}
